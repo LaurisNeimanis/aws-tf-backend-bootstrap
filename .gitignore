@@ -1,0 +1,35 @@
+# Local .terraform directories
+**/.terraform/*
+**/.terraform.lock.hcl
+.terraform
+
+# Terraform state files
+terraform.tfstate
+terraform.tfstate.*
+*.tfstate.backup
+
+# Crash log
+crash.log
+
+# Override files (should not be committed)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Variable files (optional: you may use tfvars.example instead)
+*.tfvars
+*.tfvars.json
+
+# Sensitive or system files
+*.pem
+*.key
+*.secrets
+*.vault
+
+# macOS and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
