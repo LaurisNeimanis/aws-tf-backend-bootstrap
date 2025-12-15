@@ -1,94 +1,65 @@
 # AWS Terraform Backend Bootstrap
-This repository bootstraps the **Terraform backend infrastructure** for all environments.  
-It creates a **single shared S3 state bucket** and a **DynamoDB locking table**, following modern AWS + Terraform best practices.
 
-## Overview
-Terraform cannot create its own backend before the backend exists.  
-Therefore, this repository uses a **local backend** and deploys:
+**One-time · Production-safe · Account-wide**
 
-### Created resources:
-- S3 bucket for Terraform state  
-- S3 versioning (state history & state recovery)
-- S3 server-side encryption (AES256)
-- S3 public access block (fully restricted)
-- DynamoDB table for Terraform state locking
+This repository bootstraps the **Terraform remote backend** for an AWS account by creating:
 
-After applying this repo once, **all other Terraform projects** (global, dev, prod, etc.) use this backend automatically.
+- **S3 bucket** (remote state, globally unique)
+- **DynamoDB table** (state locking)
+
+Applied once. After that, all other Terraform repositories **only consume** this backend.
 
 ---
 
-## Why the S3 bucket includes a suffix (`-ltn`)
-S3 bucket names must be **globally unique across all AWS accounts worldwide**.  
-This means that:
+## Why this repository exists
 
-> If any AWS user in the world already created a bucket with the same name,  
-> you will not be able to create it — even in your own AWS account.
+Terraform cannot use an S3 backend until the backend resources already exist.  
+This repository solves Terraform’s bootstrap problem using a **local backend** for the initial apply.
 
-To guarantee global uniqueness and keep the name professional, this project uses the suffix:
+---
 
-```
+## Created infrastructure (only)
+
+### S3 bucket (Terraform state)
+
+- Globally unique name
+- Versioning enabled
+- Server-side encryption (AES256)
+- Public access fully blocked
+
+### DynamoDB table (state locks)
+
+- Used exclusively for Terraform state locking
+- Account-scoped naming
+
+Nothing else.
+
+---
+
+## Global uniqueness (S3)
+
+S3 bucket names must be **globally unique across all AWS accounts**.
+
+Example:
+```text
 foundation-terraform-state-ltn
 ```
 
-The DynamoDB table does **not** require a suffix, because DynamoDB table names only need to be unique **within a single AWS account**, not globally.
-
----
-
-## Architecture Diagram (Mermaid)
-
-```mermaid
-flowchart TD
-
-    A["Local Terraform Backend<br>(bootstrap repo)"] -->|apply| B["S3 Bucket<br>foundation-terraform-state-ltn"]
-    A -->|apply| C["DynamoDB Table<br>foundation-terraform-locks"]
-
-    B --> D[Used by: Global / Dev / Prod Terraform]
-    C --> D
+DynamoDB table names only need to be unique **within the AWS account**:
+```text
+foundation-terraform-locks
 ```
 
 ---
 
-## File Structure
-```
-aws-tf-backend-bootstrap/
-├── backend.tf
-├── main.tf
-├── versions.tf
-├── providers.tf
-├── variables.tf
-├── outputs.tf
-└── README.md
-```
+## Usage (one-time)
 
----
-
-## Usage
-
-### 1. Initialize
-```
+```bash
 terraform init
-```
-
-### 2. Apply
-```
 terraform apply
 ```
 
-After this, note the outputs:
-
-- `s3_bucket`
-- `dynamodb_table`
-
-These values will be used by all other Terraform projects.
-
----
-
-## Cleanup After Bootstrap (Best Practice)
-
-This repository is used **only once** to create the Terraform backend (S3 + DynamoDB).  
-After running `terraform apply`, the backend infrastructure exists permanently and no further changes are required.
-
-To avoid storing local Terraform state for this bootstrap project, remove the state files:
+Optional cleanup after successful apply (recommended to avoid confusion):
 
 ```bash
 rm -rf .terraform
@@ -97,18 +68,11 @@ rm -f terraform.tfstate
 rm -f terraform.tfstate.backup
 ```
 
-This is the recommended practice because:
-
-- the bootstrap repository should not maintain its own state long-term  
-- the backend infrastructure will not be modified again  
-- future Terraform projects will use the new S3 backend  
-- keeping local state for a bootstrap repo has no purpose and can cause confusion  
-
 ---
 
-## How to use this backend in other Terraform projects
+## How other Terraform repositories use this backend
 
-Example (**global** environment):
+Example `backend.tf`:
 
 ```hcl
 terraform {
@@ -122,32 +86,30 @@ terraform {
 }
 ```
 
-Example (**dev** environment):
+Environment isolation is achieved **only via the key**:
 
 ```hcl
+# dev
 key = "dev/terraform.tfstate"
-```
 
-Example (**prod** environment):
-
-```hcl
+# prod
 key = "prod/terraform.tfstate"
 ```
 
-All environments use:
+---
 
-- the same S3 bucket  
-- the same DynamoDB table  
-- a unique `key` per environment  
+## Consumed by
+
+**AWS EKS Terraform Platform — Infrastructure Foundation**  
+https://github.com/LaurisNeimanis/aws-eks-platform
+
+This backend must be created **before** any EKS infrastructure is provisioned.
 
 ---
 
-## Best Practices Followed
+## Summary
 
-✓ Single bucket per AWS account (global S3 namespace)  
-✓ Single DynamoDB table for all Terraform locks  
-✓ Versioned & encrypted state (AES256)  
-✓ Fully blocked public access  
-✓ Local backend for safe bootstrapping  
-✓ Idempotent & reproducible infrastructure  
-✓ Global/Dev/Prod environments share a consistent backend  
+- One Terraform backend per AWS account
+- Applied exactly once
+- No ongoing lifecycle
+- Minimal, predictable, and safe by design
