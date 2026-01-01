@@ -18,7 +18,7 @@ This repository solves Terraform’s bootstrap problem using a **local backend**
 
 ---
 
-## Created infrastructure (only)
+## Created infrastructure
 
 ### S3 bucket (Terraform state)
 
@@ -52,12 +52,28 @@ foundation-terraform-locks
 
 ---
 
+## Repository context
+
+Clone the repository locally:
+
+```bash
+git clone https://github.com/LaurisNeimanis/aws-tf-backend-bootstrap.git
+cd aws-tf-backend-bootstrap
+```
+
+All commands below assume execution from the repository root.
+
+---
+
 ## Usage (one-time)
 
 ```bash
 terraform init
 terraform apply
 ```
+
+Do not re-run apply after successful creation unless intentionally
+recreating the backend.
 
 Optional cleanup after successful apply (recommended to avoid confusion):
 
